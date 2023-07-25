@@ -1,0 +1,78 @@
+version: '2'
+
+services:
+    nginx:
+        restart: always
+        image: nginx:1.23-alpine
+        ports:
+            - 80:80
+        volumes:
+            - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+            - static_volume:/app/backend/farmsetu/static
+    server:
+        restart: unless-stopped
+        build:
+            context: .
+            dockerfile: ./docker/backend/Dockerfile
+        entrypoint: /app/docker/backend/server-entrypoint.sh
+        volumes:
+            - static_volume:/app/backend/farmsetu/static
+        expose:
+            - 8000
+        environment:
+            DEBUG: "True"
+            CELERY_BROKER_URL: "redis://redis:6379/0"
+            CELERY_RESULT_BACKEND: "redis://redis:6379/0"
+            DJANGO_DB: postgresql
+            FARMSETU_DB_HOST: db
+            FARMSETU_DB_NAME: postgres
+            FARMSETU_DB_USER: postgres
+            FARMSETU_DB_PASSWORD: postgres
+            FARMSETU_DB_PORT: 5432
+        depends_on:
+            - redis
+            - db
+    worker:
+        restart: unless-stopped
+        build:
+            context: .
+            dockerfile: ./docker/backend/Dockerfile
+        entrypoint: /app/docker/backend/worker-entrypoint.sh
+        volumes:
+            - static_volume:/app/backend/farmsetu/static
+        environment:
+            DEBUG: "True"
+            CELERY_BROKER_URL: "redis://redis:6379/0"
+            CELERY_RESULT_BACKEND: "redis://redis:6379/0"
+            DJANGO_DB: postgresql
+            FARMSETU_DB_HOST: db
+            FARMSETU_DB_NAME: postgres
+            FARMSETU_DB_USER: postgres
+            FARMSETU_DB_PASSWORD: postgres
+            FARMSETU_DB_PORT: 5432
+        depends_on:
+            - server
+            - redis
+            - db
+    redis:
+        restart: unless-stopped
+        image: redis:7.0.5-alpine
+        expose:
+            - 6379
+    db:
+        image: postgres:13.0-alpine
+        restart: unless-stopped
+        volumes:
+            - postgres_data:/var/lib/postgresql/data/
+        environment:
+            POSTGRES_DB: postgres
+            POSTGRES_USER: postgres
+            POSTGRES_DB_PASSWORD: postgres
+            POSTGRES_HOST_AUTH_METHOD: "trust"
+
+        expose:
+            - 5432
+
+volumes:
+    static_volume: {}
+    postgres_data: {}
