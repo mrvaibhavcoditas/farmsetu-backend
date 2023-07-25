@@ -1,5 +1,8 @@
-import logging, requests, csv
+import logging, requests
+from io import StringIO
+import pandas as pd
 from celery import shared_task
+
 
 from farmsetu.models import Year, Region, Parameter, ParameterRegion, Weather
 
@@ -21,10 +24,6 @@ def insert_weather_data(self, *args, **kwargs):
 
             lines = content.splitlines()[5:]
             content = '\n'.join(lines)
-
-            import pandas as pd
-            from io import StringIO
-
 
             TESTDATA = StringIO(content)
 
